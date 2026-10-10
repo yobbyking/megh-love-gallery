@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MEGH LOVE — Device Gallery</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0a0610;color:#fff;min-height:100vh}
+.bg{position:fixed;inset:0;z-index:0;background:radial-gradient(800px 400px at 50% 0%,rgba(225,29,42,0.15),transparent),radial-gradient(600px 400px at 50% 100%,rgba(245,197,66,0.08),transparent),#0a0610}
+.wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:20px}
+.hdr{text-align:center;margin-bottom:32px;padding-top:40px}
+.hdr h1{font-size:36px;font-weight:900;background:linear-gradient(135deg,#FF2A3A,#F5C542);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px}
+.hdr p{color:#8696A0;font-size:13px;margin-top:8px;letter-spacing:1px}
+.stats{display:flex;gap:12px;justify-content:center;margin-bottom:32px;flex-wrap:wrap}
+.stat{background:rgba(15,15,18,0.7);border:1px solid rgba(245,197,66,0.15);border-radius:14px;padding:16px 24px;text-align:center;min-width:120px}
+.stat-num{font-size:28px;font-weight:900;color:#F5C542}
+.stat-label{font-size:10px;color:#8696A0;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.card{background:rgba(15,15,18,0.7);border:1px solid rgba(245,197,66,0.1);border-radius:16px;overflow:hidden;transition:all .3s}
+.card:hover{border-color:rgba(245,197,66,0.4);transform:translateY(-4px)}
+.card-img{width:100%;height:160px;object-fit:cover;background:#111;cursor:pointer}
+.card-icon{width:100%;height:160px;display:flex;align-items:center;justify-content:center;font-size:48px;background:linear-gradient(135deg,#1a0a1a,#0a0610)}
+.card-info{padding:12px}
+.card-name{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-date{font-size:11px;color:#8696A0;margin-top:4px}
+.card-size{font-size:11px;color:#F5C542;margin-top:2px}
+.card-actions{display:flex;gap:8px;padding:0 12px 12px}
+.btn-dl{flex:1;padding:8px;text-align:center;background:rgba(0,217,166,0.15);border:1px solid rgba(0,217,166,0.3);border-radius:8px;font-size:11px;color:#00D9A6;font-weight:700;text-decoration:none;cursor:pointer}
+.btn-del{padding:8px 12px;background:rgba(225,29,42,0.15);border:1px solid rgba(225,29,42,0.3);border-radius:8px;font-size:11px;color:#FF2A3A;font-weight:700;cursor:pointer}
+.empty{text-align:center;padding:80px 20px;color:#8696A0}
+.empty-icon{font-size:64px;margin-bottom:16px}
+.modal{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.9);display:none;align-items:center;justify-content:center}
+.modal.show{display:flex}
+.modal img{max-width:90%;max-height:90%;border-radius:12px}
+.modal-close{position:fixed;top:20px;right:20px;color:#fff;font-size:32px;cursor:pointer;background:rgba(0,0,0,0.5);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.refresh{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#FF2A3A,#E11D2A);color:#fff;border:none;font-size:20px;cursor:pointer;box-shadow:0 4px 20px rgba(225,29,42,0.4);z-index:10}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="wrap">
+<div class="hdr">
+<h1>❤️ MEGH LOVE GALLERY</h1>
+<p>★ Your Device Files — Sorted by Date ★</p>
+</div>
+<div class="stats">
+<div class="stat"><div class="stat-num" id="totalFiles">0</div><div class="stat-label">Total Files</div></div>
+<div class="stat"><div class="stat-num" id="totalImages">0</div><div class="stat-label">Images</div></div>
+<div class="stat"><div class="stat-num" id="totalVideos">0</div><div class="stat-label">Videos</div></div>
+<div class="stat"><div class="stat-num" id="totalSize">0</div><div class="stat-label">Size</div></div>
+</div>
+<div class="gallery" id="gallery"></div>
+<div class="empty" id="empty" style="display:none">
+<div class="empty-icon">📁</div>
+<h2>No files yet</h2>
+<p style="margin-top:8px">Open the MEGH LOVE app on your phone to sync files</p>
+</div>
+</div>
+<div class="modal" id="modal" onclick="closeModal()">
+<span class="modal-close" onclick="closeModal()">×</span>
+<img id="modalImg" src="">
+</div>
+<button class="refresh" onclick="loadFiles()">🔄</button>
+<script>
+async function loadFiles(){
+try{
+const r=await fetch('/api/files');
+const d=await r.json();
+const gallery=document.getElementById('gallery');
+const empty=document.getElementById('empty');
+gallery.innerHTML='';
+if(d.files.length===0){empty.style.display='block';return;}
+empty.style.display='none';
+let totalSize=0,totalImages=0,totalVideos=0;
+d.files.forEach(f=>{
+totalSize+=f.size||0;
+if(f.type&&f.type.startsWith('image/'))totalImages++;
+if(f.type&&f.type.startsWith('video/'))totalVideos++;
+const card=document.createElement('div');
+card.className='card';
+const isImage=f.type&&f.type.startsWith('image/');
+const isVideo=f.type&&f.type.startsWith('video/');
+const icon=isVideo?'🎬':f.type&&f.type.startsWith('audio/')?'🎵':f.type&&f.type.startsWith('application/')?'📄':'📁';
+const dateStr=new Date(f.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+const sizeStr=f.size?(f.size<1024?f.size+'B':f.size<1024*1024?(f.size/1024).toFixed(1)+'KB':(f.size/1024/1024).toFixed(1)+'MB'):'';
+if(isImage&&f.path){
+card.innerHTML=`<img class="card-img" src="${f.path}" onclick="openModal('${f.path}')"><div class="card-info"><div class="card-name">${f.name}</div><div class="card-date">${dateStr}</div>${sizeStr?`<div class="card-size">${sizeStr}</div>`:''}</div><div class="card-actions"><a class="btn-dl" href="${f.path}" download="${f.name}">⬇ Download</a><button class="btn-del" onclick="deleteFile('${f.id}')">🗑</button></div>`;
+}else{
+card.innerHTML=`<div class="card-icon">${icon}</div><div class="card-info"><div class="card-name">${f.name}</div><div class="card-date">${dateStr}</div>${sizeStr?`<div class="card-size">${sizeStr}</div>`:''}</div>${f.path?`<div class="card-actions"><a class="btn-dl" href="${f.path}" download="${f.name}">⬇ Download</a><button class="btn-del" onclick="deleteFile('${f.id}')">🗑</button></div>`:'<div class="card-actions"><span style="font-size:10px;color:#8696A0;padding:8px">Metadata only</span></div>'}`;
+}
+gallery.appendChild(card);
+});
+document.getElementById('totalFiles').textContent=d.total;
+document.getElementById('totalImages').textContent=totalImages;
+document.getElementById('totalVideos').textContent=totalVideos;
+document.getElementById('totalSize').textContent=totalSize<1024?totalSize+'B':totalSize<1024*1024?(totalSize/1024).toFixed(0)+'KB':(totalSize/1024/1024).toFixed(1)+'MB';
+}catch(e){console.error(e);}
+}
+function openModal(src){document.getElementById('modalImg').src=src;document.getElementById('modal').classList.add('show');}
+function closeModal(){document.getElementById('modal').classList.remove('show');}
+async function deleteFile(id){if(!confirm('Delete this file?'))return;try{await fetch('/api/files/'+id,{method:'DELETE'});loadFiles();}catch(e){}}
+loadFiles();setInterval(loadFiles,5000);
+</script>
+</body>
+</html>
